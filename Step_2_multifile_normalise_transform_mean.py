@@ -20,12 +20,12 @@ df = df.groupby(["sample_id"], as_index=False, group_keys=False).apply(group_dx)
 df.head()
 
 
-ASSAY_ID = "plate035"
-EXCLUDE = [
-    "plate035_A_1"
-]
-filtered_df = df.loc[df["assay_id"] == ASSAY_ID]
-filtered_df = filtered_df[~filtered_df["sample_id"].isin(EXCLUDE)]
+# ASSAY_ID = "plate035"
+# EXCLUDE = [
+#     "plate035_A_1"
+# ]
+# filtered_df = df.loc[df["assay_id"] == ASSAY_ID]
+# filtered_df = filtered_df[~filtered_df["sample_id"].isin(EXCLUDE)]
 
 # Toggle comments for below lines to run visualization of the plate grid
 
