@@ -4,6 +4,7 @@ library(dplyr)
 library(plotly)
 library("DescTools")
 library("openxlsx")
+library(multcompView)
 
 # clean environment
 rm(list=ls())
@@ -15,7 +16,9 @@ setwd("C:/Users/Mende012/Documents/Bioinformatics/ROS assays/DR_final_pipeline")
 df <- read.csv("./MM20230106_2_auc_data.csv")
 
 # Output Prefix
-pre <- "MM20230202"
+# generate prefix string including date/ Initials
+current_date <- gsub("-", "", as.character(Sys.Date()))# Get the current date as character
+pre <- paste("MM", current_date, sep = "")
 
 # Accidentally named HopN1 as AvrN1 - change to correct name
 #df$treatment_id[df$treatment_id == 'D36E+AvrN1_Bacterial PAMPs'] <- 'D36E+HopN1_Bacterial PAMPs'
@@ -80,6 +83,10 @@ dunn_res$sample <- sub("-D36E.*", "", dunn_res$sample)
 # simple table 
 simple <- data.frame(dunn_res$sample, dunn_res$ast, row.names = NULL)
 
+# # safe res
+sink(paste(pre, sep = "","ROS_supression_DC3000_library_Dunnet_prescale.txt"))
+print(dunn_res)
+sink()
 
 ###################################################################################
 ######################## scale by positive control - ##############################
@@ -185,7 +192,7 @@ head(df)
 ##########################  Statistics post-scaling   ###########################
 #################################################################################
 
-# Dunnett's test - per plate with scaled data
+# Dunnett's test - per plate with scaled data ----
 
 dunn_scal <- lapply(unique(df$assay_id), function(x) as.data.frame(DunnettTest(prc_pos_avg ~ treatment_id, 
                                                                                data = df[df$assay_id==x,], 
@@ -214,11 +221,99 @@ dunn_scal$sample <- sub("-D36E.*", "", dunn_scal$sample)
 # simple table 
 simple_scal <- data.frame(dunn_scal$sample, dunn_scal$ast, row.names = NULL)
 
+# safe res
+sink(paste(pre, sep = "","ROS_supression_DC3000_library_Dunnet_scaled.txt"))
+print(dunn_scal)
+sink()
+
+# ANOVA + TUKEY - per plate with scaled data ----
+# The following analysis requires that ther is no "-" present in the sample name
+# Replace "-" with "_"
+
+df$treatment_id <- gsub("-", "_", df$treatment_id)
+
+# 4. Statistical analysis across samples using ANOVA+TUKEY ----
+# 4.1. ANOVA to analyse whether there are differences between the groups
+#      H0 All means are the same 
+#      H1 at least one mean is different
+
+anova_prc <- aov(prc_pos_avg ~ treatment_id, data = df)
+
+{summary(anova_prc)
+  summary.lm(anova_prc)}
+
+# 4.2 TUKEY Posthoc to see which groups are significantly different 
+TUKEY <- TukeyHSD(anova_prc)
+
+# 4.3 Summarize TUKEY test results for saving & plotting
+
+# 4.3.1 write a funktion to generate labels for the test results
+generate_label_df <- function(TUKEY, variable){
+  
+  # Extract labels and factor levels from Tukey post-hoc results
+  Tukey.levels <- TUKEY[[variable]][,4]
+  Tukey.labels <- data.frame(multcompLetters(Tukey.levels)['Letters'])
+  
+  # order labels according to boxplot:
+  Tukey.labels$Pst_strain = rownames(Tukey.labels)
+  Tukey.labels=Tukey.labels[order(Tukey.labels$Pst_strain) , ]
+  return(Tukey.labels)
+}
+
+# 4.3.2 Apply the function on the df
+LABELS <- generate_label_df(TUKEY , "treatment_id")
+names(LABELS) <- c("Letters","treatment_id")
+
+# 4.3.3 safe TUKEY test results
+sink(paste(pre, sep = "","ROS_supression_DC3000_library_TUKEY_scaled.txt"))
+print(LABELS)
+sink()
+
+# 4.3.4 obtain letter position for y axis using means
+yvalue <- aggregate(prc_pos_avg ~ treatment_id, data = df, mean) 
+LABELS$treatment_id <- (unlist(lapply(strsplit(LABELS$treatment_id,'[_]'),function(x){x[[1]]})))
+
+# 4.3.5 generate df with results TUKEY test
+final <- merge(yvalue,LABELS) 
+
+# 4.3.6 For ploting extract label vector
+stat_labels <- as.vector(LABELS$Letters)
+
+
+# 5. Box Plots comparing Pst strains, 2 dpi, TUKEY results, save as pdf (default) ----
+
+g_x <-  ggplot(df, aes(x=as.factor(treatment_id), y=prc_pos_avg)) + 
+  
+  geom_boxplot(fill="white",                 # box colour
+               outlier.colour = "white",     # Outliers color, 
+               alpha=0.9) +                  # Box color transparency
+  
+  theme_bw() +  # make the bg white
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 
+        panel.border = element_blank(), # remove background, frame
+        axis.line = element_line(colour = "black")) +
+  
+  xlab("Pseudomonas strain") +                   # axis label
+  ylab("log10 (CFU/cm2)") +
+  
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) + # turn the tick marks on the x axis 45 degree +
+  #expand_limits( y = c(0, 10)) +
+  
+  geom_jitter(shape=16, position=position_jitter(0.1),
+              aes(colour = factor(treatment_id))) +
+  stat_boxplot(geom = "errorbar", # Error bars
+               width = 0.2) +
+  geom_text(data = final, aes(y= treatment_id, label = Letters), 
+            vjust= -7 ,hjust= 0.5)
+
+
+g_x
+
 
 
 #################################################################################
 ###########################    boxplot pre-scaling    ###########################
-#################################################################################
+################################################################################# ----
 
 # simplify names in df
 #df$treatment_id <- sub("D36E", "", df$treatment_id)
@@ -327,3 +422,21 @@ dev.off()
 
 ggplotly(g3)
 
+
+
+
+
+# In progress LAST: Safe stat results for better comparison in one df ----
+# Sort df
+LABELS_sorted <- LABELS[order(LABELS$treatment_id), ]
+simple_scal_sorted <- simple_scal[order(simple_scal$dunn_scal.sample), ]
+
+stat_comp <- data.frame(  "Treatment" = LABELS_sorted$treatment_id ,
+                          "Not_scaled_Dunnet's" = ,
+                          "Scaled_Dunnet's" = simple_scal$dunn_scal.ast  ,
+                          "Scaled_TUKEY" = LABELS$Letters)
+
+
+sink(paste(pre, sep = "","CFU_count_DC3000_library_summary_stats.txt"))
+print(stat_comp)
+sink()
