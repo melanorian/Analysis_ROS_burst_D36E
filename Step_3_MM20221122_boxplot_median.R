@@ -13,7 +13,7 @@ rm(list=ls())
 setwd("C:/Users/Mende012/Documents/Bioinformatics/ROS assays/DR_final_pipeline")
 
 # import file
-df <- read.csv("./MM20230106_2_auc_data.csv")
+df <- read.csv("./Step_2_MM20230106_2_auc_data.csv")
 
 # Output Prefix
 # generate prefix string including date/ Initials

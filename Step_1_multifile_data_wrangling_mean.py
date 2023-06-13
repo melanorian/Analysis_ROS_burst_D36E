@@ -13,7 +13,7 @@ import pandas as pd
 # Script configuration
 LAYOUT_FILE = "./MM20221209_summary_ROS_DC3000_ef_library.xlsx"
 PLATES_DIR = "." # enter "." if it is in the same directory as the script
-OUTPUT_PREFIX = "MM20230105_out"
+OUTPUT_PREFIX = "Step_1_MM20230105"
 
 # In the strings input a way to identify the plate id from a filename
 # if you have a filename like MM_ROS_plate01_processed.xslx

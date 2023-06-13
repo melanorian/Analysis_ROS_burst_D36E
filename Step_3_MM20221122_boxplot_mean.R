@@ -11,7 +11,7 @@ rm(list=ls())
 setwd("C:/Users/Mende012/Documents/Bioinformatics/ROS assays/DR_final_pipeline")
 
 # import file
-df <- read.csv("./Step_2_MM20230105_auc_data_mean.csv")
+df <- read.csv("./Step_2_MM20230106_2_auc_data.csv")
 
 # Accidentally named HopN1 as AvrN1 - change to correct name
 df$treatment_id[df$treatment_id == 'D36E+AvrN1_Bacterial PAMPs'] <- 'D36E+HopN1_Bacterial PAMPs'

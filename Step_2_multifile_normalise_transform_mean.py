@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import math
 
 
-df = pd.read_csv("./MM20230105_out_base_data.csv")
+df = pd.read_csv("./Step_1_MM20230105_out_base_data.csv")
 
 def group_dx(group: pd.DataFrame) -> pd.DataFrame:
     group.sort_values("timepoint", inplace=True)
@@ -87,7 +87,7 @@ def auc_calc(group):
 auc_df = normalised_df[normalised_df["timepoint"] <= TIMEPOINT]
 auc_df = auc_df.groupby(["treatment_id", "assay_id", "sample_id"], as_index=False, group_keys=False).apply(auc_calc)
 auc_df.rename({None: "area_under_curve"}, inplace=True, axis="columns")
-auc_df.to_csv("auc_data.csv")
+auc_df.to_csv("Step_2_MM20230106_2_auc_data.csv") # change name/update date
 auc_df
 
 
